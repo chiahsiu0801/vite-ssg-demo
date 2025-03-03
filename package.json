@@ -5,11 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "generate": "vite-ssg build",
+    "dev:csr": "node switch-mode.js csr && vite",
+    "dev:ssg": "node switch-mode.js ssg && vite-ssg dev",
+    "build:csr": "node switch-mode.js csr && cross-env BUILD_TYPE=csr vite build",
+    "build:ssg": "node switch-mode.js ssg && cross-env BUILD_TYPE=ssg vite-ssg build",
+    "preview:csr": "vite preview --outDir dist-csr",
+    "preview:ssg": "vite preview --outDir dist-ssg",
     "start": "node server.js",
-    "isr": "npm run generate && npm run start"
+    "isr": "npm run build:ssg && npm run start",
+    "switch:csr": "node switch-mode.js csr",
+    "switch:ssg": "node switch-mode.js ssg"
   },
   "dependencies": {
     "express": "^4.21.2",

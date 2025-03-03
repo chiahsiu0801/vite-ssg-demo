@@ -1,10 +1,12 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { resolve } from 'path'
 
 // https://vite.dev/config/
 export default defineConfig(({ command, mode, ssrBuild }) => {
   // Get route from environment variable if specified
   const routeToRender = process.env.ROUTE_TO_RENDER;
+  const buildType = process.env.BUILD_TYPE || 'csr'; // Default to CSR if not specified
   
   return {
     plugins: [
@@ -16,6 +18,16 @@ export default defineConfig(({ command, mode, ssrBuild }) => {
         }
       }
     ],
+    build: {
+      outDir: buildType === 'ssg' ? 'dist-ssg' : 'dist-csr',
+      rollupOptions: {
+        input: {
+          main: buildType === 'ssg' 
+            ? resolve(__dirname, 'index.html') // For SSG, use the default entry
+            : resolve(__dirname, 'index.html')  // For CSR, use the same entry but different main.js will be loaded
+        }
+      }
+    },
     ssgOptions: {
       script: 'async',
       formatting: 'minify',
