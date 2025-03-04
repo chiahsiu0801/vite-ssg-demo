@@ -1,49 +1,58 @@
-FROM nginx:stable-alpine
+# Use a Node.js base image with Alpine to keep it lightweight
+FROM node:18-alpine
+
+# Install nginx and tzdata (for timezone support)
+RUN apk add --no-cache nginx tzdata
+
+# Set the timezone to UTC+8 (Asia/Shanghai, Asia/Singapore, Asia/Hong_Kong, etc.)
+ENV TZ=Asia/Taipei
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# Create app directory
+WORKDIR /app
+
+# Copy package.json and package-lock.json
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy source files
+COPY . .
+
+# Build the SSG and CSR versions
+RUN npm run build:csr
+RUN npm run build:ssg
+
+# Create nginx directories
+RUN mkdir -p /usr/share/nginx/html/dist-csr
+RUN mkdir -p /usr/share/nginx/html/dist-ssg
+
+# Copy the SSG files directly
+RUN cp -r dist-ssg/* /usr/share/nginx/html/dist-ssg/
+
+# Fix the nested directory issue for CSR
+# If the structure is dist-csr/dist-csr/assets, we need to flatten it
+RUN if [ -d "dist-csr/dist-csr" ]; then \
+        cp -r dist-csr/dist-csr/* /usr/share/nginx/html/dist-csr/; \
+    else \
+        cp -r dist-csr/* /usr/share/nginx/html/dist-csr/; \
+    fi
+
+# Copy nginx configuration
+COPY nginx.conf /etc/nginx/nginx.conf
 
 # Remove default nginx configuration
 RUN rm -rf /etc/nginx/conf.d/*
 
-# Create a simple configuration file
-RUN echo 'server { \
-    listen 80; \
-    \
-    # Root route (/) - Serve from dist-ssg \
-    location = / { \
-        alias /usr/share/nginx/html/dist-ssg/; \
-        add_header X-Debug-Source "dist-ssg-root" always; \
-    } \
-    \
-    # Assets for SSG \
-    location /assets/ { \
-        alias /usr/share/nginx/html/dist-ssg/assets/; \
-        add_header X-Debug-Source "dist-ssg-assets" always; \
-    } \
-    \
-    # Vite SSG assets \
-    location = /vite.svg { \
-        alias /usr/share/nginx/html/dist-ssg/vite.svg; \
-        add_header X-Debug-Source "dist-ssg-vite-svg" always; \
-    } \
-    \
-    # All other routes - Serve from dist-csr \
-    location / { \
-        root /usr/share/nginx/html/dist-csr; \
-        try_files $uri $uri/ /index.html; \
-        add_header X-Debug-Source "dist-csr" always; \
-    } \
-}' > /etc/nginx/conf.d/default.conf
-
-# Create directories for our content
-RUN mkdir -p /usr/share/nginx/html/dist-csr
-RUN mkdir -p /usr/share/nginx/html/dist-ssg
-
-# Copy the dist-csr and dist-ssg content
-COPY dist-csr/ /usr/share/nginx/html/dist-csr/
-COPY dist-ssg/ /usr/share/nginx/html/dist-ssg/
-
-# For debugging - create a test file
-RUN echo '<html><body><h1>This is from dist-ssg</h1></body></html>' > /usr/share/nginx/html/dist-ssg/test.html
-RUN echo '<html><body><h1>This is from dist-csr</h1></body></html>' > /usr/share/nginx/html/dist-csr/test.html
+# Create a startup script
+RUN echo '#!/bin/sh' > /start.sh && \
+    echo 'nginx' >> /start.sh && \
+    echo 'node server.js' >> /start.sh && \
+    chmod +x /start.sh
 
 # Expose port 80
-EXPOSE 80 
+EXPOSE 80
+
+# Start both nginx and the Node.js server
+CMD ["/start.sh"] 

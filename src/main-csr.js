@@ -22,6 +22,15 @@ const router = createRouter({
   routes
 })
 
+// Handle navigation errors - this helps with the index.html issue
+router.onError((error) => {
+  console.error('Router error:', error);
+  // Redirect to home page if there's a navigation error
+  if (error.type === 2) { // Navigation guard redirect
+    router.push('/');
+  }
+});
+
 // Create and mount the app
 const app = createApp(App)
 app.use(router)

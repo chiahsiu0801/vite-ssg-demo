@@ -13,14 +13,6 @@ const routes = [
       prerender: true
     }
   },
-  {
-    path: '/about',
-    component: () => import('./pages/About.vue'),
-    // This route will be client-side rendered only
-    meta: {
-      prerender: false
-    }
-  },
   // Add more routes as needed
 ]
 

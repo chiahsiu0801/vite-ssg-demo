@@ -8,13 +8,17 @@ export default defineConfig(({ command, mode, ssrBuild }) => {
   const routeToRender = process.env.ROUTE_TO_RENDER;
   const buildType = process.env.BUILD_TYPE || 'csr'; // Default to CSR if not specified
   
+  // Use an environment variable or generate a fixed timestamp
+  const BUILD_TIME = process.env.BUILD_TIME || new Date().toLocaleString();
+  process.env.VITE_BUILD_TIME = BUILD_TIME; // Make it available to the app
+  
   return {
     plugins: [
       vue(),
       {
         name: 'build-time',
         transform(code) {
-          return code.replace(/__BUILD_TIME__/g, new Date().toLocaleString());
+          return code.replace(/__BUILD_TIME__/g, BUILD_TIME);
         }
       }
     ],
@@ -27,6 +31,14 @@ export default defineConfig(({ command, mode, ssrBuild }) => {
             : resolve(__dirname, 'index.html')  // For CSR, use the same entry but different main.js will be loaded
         }
       }
+    },
+    // Add server configuration for development and preview
+    server: {
+      historyApiFallback: true, // Important for SPA routing
+    },
+    preview: {
+      port: 4173,
+      historyApiFallback: true, // Important for SPA routing
     },
     ssgOptions: {
       script: 'async',

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001; // Changed to 3001 to avoid conflict with Nginx
 
 // Serve static files from the dist-ssg directory
 app.use(express.static(path.join(__dirname, 'dist-ssg')));
@@ -14,7 +14,11 @@ app.use(express.static(path.join(__dirname, 'dist-ssg')));
 function runFullSsgBuild() {
   console.log(`[${new Date().toISOString()}] Starting full SSG rebuild...`);
   
-  exec('npm run build:ssg', (error, stdout, stderr) => {
+  // Set the BUILD_TIME environment variable
+  const buildTime = new Date().toLocaleString();
+  process.env.BUILD_TIME = buildTime;
+  
+  exec(`BUILD_TIME="${buildTime}" npm run build:ssg`, (error, stdout, stderr) => {
     if (error) {
       console.error(`Error during build: ${error.message}`);
       return;
@@ -25,6 +29,19 @@ function runFullSsgBuild() {
     }
     
     console.log(`[${new Date().toISOString()}] Full SSG rebuild completed successfully`);
+    
+    // Copy the newly built files to the Nginx directory
+    try {
+      exec('cp -r dist-ssg/* /usr/share/nginx/html/dist-ssg/', (error, stdout, stderr) => {
+        if (error) {
+          console.error(`Error copying files: ${error.message}`);
+          return;
+        }
+        console.log(`[${new Date().toISOString()}] Files copied to Nginx directory`);
+      });
+    } catch (err) {
+      console.error(`Error copying files: ${err.message}`);
+    }
   });
 }
 
